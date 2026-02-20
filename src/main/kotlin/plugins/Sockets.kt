@@ -1,6 +1,8 @@
 package com.example.plugins
 
 import com.example.websocket.AtraccionesSocketManager
+import com.example.websocket.MultimediaSocketManager
+import com.example.websocket.TextosGuardadosManager
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
@@ -27,5 +29,32 @@ fun Application.configureSockets() {
                 AtraccionesSocketManager.remove(this)
             }
         }
+
+        webSocket("/ws/multimedia") {
+
+            MultimediaSocketManager.add(this)
+
+            try {
+                for (frame in incoming) {
+                    // No necesitamos recibir mensajes
+                }
+            } finally {
+                MultimediaSocketManager.remove(this)
+            }
+        }
+
+        webSocket("/ws/textos_guardados"){
+
+            TextosGuardadosManager.add(this)
+
+            try {
+                for (frame in incoming) {
+                    // No necesitamos recibir mensajes
+                }
+            } finally {
+                TextosGuardadosManager.remove(this)
+            }
+        }
+
     }
 }

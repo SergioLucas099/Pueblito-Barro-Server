@@ -2,6 +2,8 @@ package com.example.routes
 
 import com.example.db.MongoDB
 import com.example.model.Multimedia
+import com.example.websocket.MultimediaSocketManager
+import com.mongodb.client.model.Updates
 import io.ktor.http.*
 import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
@@ -9,7 +11,7 @@ import io.ktor.http.content.streamProvider
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.litote.kmongo.setTo
+import org.litote.kmongo.EMPTY_BSON
 import org.litote.kmongo.eq
 import java.io.File
 import java.util.*
@@ -22,7 +24,10 @@ fun Route.multimediaRoutes() {
         post("/upload") {
 
             val multipart = call.receiveMultipart()
+
             var savedFilePath: String? = null
+            var nombre: String = "Sin nombre"
+            var sonido: Boolean = false
 
             val uploadDir = File("videos")
             if (!uploadDir.exists()) {
@@ -31,30 +36,44 @@ fun Route.multimediaRoutes() {
 
             multipart.forEachPart { part ->
 
-                if (part is PartData.FileItem) {
+                when (part) {
 
-                    val originalFileName =
-                        part.originalFileName ?: "video.mp4"
+                    is PartData.FileItem -> {
 
-                    if (!originalFileName.endsWith(".mp4")) {
-                        return@forEachPart call.respond(
-                            HttpStatusCode.BadRequest,
-                            mapOf("error" to "Solo se permiten MP4")
-                        )
+                        val originalFileName =
+                            part.originalFileName ?: "video.mp4"
+
+                        if (!originalFileName.endsWith(".mp4")) {
+                            part.dispose()
+                            return@forEachPart call.respond(
+                                HttpStatusCode.BadRequest,
+                                mapOf("error" to "Solo se permiten MP4")
+                            )
+                        }
+
+                        val uniqueName =
+                            UUID.randomUUID().toString() + ".mp4"
+
+                        val file = File(uploadDir, uniqueName)
+
+                        part.streamProvider().use { input ->
+                            file.outputStream().buffered().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+
+                        savedFilePath = "videos/$uniqueName"
                     }
 
-                    val uniqueName =
-                        UUID.randomUUID().toString() + ".mp4"
+                    is PartData.FormItem -> {
 
-                    val file = File(uploadDir, uniqueName)
-
-                    part.streamProvider().use { input ->
-                        file.outputStream().buffered().use { output ->
-                            input.copyTo(output)
+                        when (part.name) {
+                            "sonido" -> sonido = part.value.toBoolean()
+                            "nombre" -> nombre = part.value
                         }
                     }
 
-                    savedFilePath = "videos/$uniqueName"
+                    else -> {}
                 }
 
                 part.dispose()
@@ -67,20 +86,23 @@ fun Route.multimediaRoutes() {
                 )
             }
 
-            // 🔥 1️⃣ Desactivar todos los anteriores
+            // 🔥 Desactivar todos correctamente
             MongoDB.multimedia.updateMany(
-                org.litote.kmongo.EMPTY_BSON,
-                Multimedia::activo setTo false
+                EMPTY_BSON,
+                Updates.set("activo", false)
             )
 
-            // 🔥 2️⃣ Insertar nuevo como activo
             val nuevoVideo = Multimedia(
                 tipo = "VIDEO",
                 url = savedFilePath!!,
-                activo = true
+                activo = true,
+                sonido = sonido,
+                nombre = nombre
             )
 
             MongoDB.multimedia.insertOne(nuevoVideo)
+
+            MultimediaSocketManager.broadcast("UPDATE_VIDEO")
 
             call.respond(nuevoVideo)
         }
@@ -91,7 +113,7 @@ fun Route.multimediaRoutes() {
             call.respond(lista)
         }
 
-        // 📺 OBTENER SOLO EL ACTIVO (IMPORTANTE PARA TurnosTV)
+        // 📺 OBTENER SOLO EL ACTIVO
         get("/activo") {
 
             val activo = MongoDB.multimedia
@@ -109,11 +131,47 @@ fun Route.multimediaRoutes() {
             call.respond(activo)
         }
 
-        // 🗑 ELIMINAR
+        // 🗑 ELIMINAR (BD + archivo físico)
         delete("/{id}") {
+
             val id = call.parameters["id"]!!
-            MongoDB.multimedia.deleteOneById(id)
+
+            val media = MongoDB.multimedia.findOneById(id)
+
+            if (media != null) {
+
+                val file = File(media.url)
+
+                if (file.exists()) {
+                    file.delete()
+                }
+
+                MongoDB.multimedia.deleteOneById(id)
+
+                MultimediaSocketManager.broadcast("UPDATE_VIDEO")
+            }
+
             call.respond(mapOf("deleted" to true))
+        }
+
+        // ⭐ ACTIVAR VIDEO SIN SUBIR UNO NUEVO
+        put("/{id}/activar") {
+
+            val id = call.parameters["id"]!!
+
+            MongoDB.multimedia.updateMany(
+                EMPTY_BSON,
+                Updates.set("activo", false)
+            )
+
+            MongoDB.multimedia.updateOneById(
+                id,
+                Updates.set("activo", true)
+            )
+
+            MultimediaSocketManager.broadcast("UPDATE_VIDEO")
+
+            call.respond(mapOf("success" to true))
         }
     }
 }

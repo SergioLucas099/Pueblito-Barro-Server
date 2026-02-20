@@ -4,9 +4,9 @@ import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import java.util.concurrent.CopyOnWriteArraySet
 
-object AtraccionesSocketManager {
+object MultimediaSocketManager {
 
-    val sessions = CopyOnWriteArraySet<WebSocketServerSession>()
+    private val sessions = CopyOnWriteArraySet<WebSocketServerSession>()
 
     fun add(session: WebSocketServerSession) {
         sessions.add(session)
