@@ -33,7 +33,7 @@ fun Route.atraccionesRoutes() {
 
             MongoDB.atracciones.insertOne(atraccion)
 
-            // 🔥 Broadcast en tiempo real
+            // Broadcast en tiempo real
             AtraccionesSocketManager.broadcast(
                 Json.encodeToString(atraccion)
             )

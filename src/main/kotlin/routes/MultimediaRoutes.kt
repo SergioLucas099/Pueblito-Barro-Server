@@ -154,7 +154,7 @@ fun Route.multimediaRoutes() {
             call.respond(mapOf("deleted" to true))
         }
 
-        // ⭐ ACTIVAR VIDEO SIN SUBIR UNO NUEVO
+        // ACTIVAR TEXTO SIN SUBIR UNO NUEVO
         put("/{id}/activar") {
 
             val id = call.parameters["id"]!!
@@ -169,7 +169,7 @@ fun Route.multimediaRoutes() {
                 Updates.set("activo", true)
             )
 
-            MultimediaSocketManager.broadcast("UPDATE_VIDEO")
+            MultimediaSocketManager.broadcast("UPDATE_TEXT")
 
             call.respond(mapOf("success" to true))
         }
