@@ -57,6 +57,8 @@ fun Route.textosRoutes() {
                     mapOf("error" to "No hay texto activo")
                 )
             }
+
+            call.respond(activo)
         }
 
         // Actualizar
@@ -82,7 +84,7 @@ fun Route.textosRoutes() {
                 Updates.set("activo", true)
             )
 
-            TextosGuardadosManager.broadcast("UPDATE_VIDEO")
+            TextosGuardadosManager.broadcast("UPDATE_TEXT")
 
             call.respond(mapOf("success" to true))
         }

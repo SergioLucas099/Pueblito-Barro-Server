@@ -3,6 +3,7 @@ package com.example.plugins
 import com.example.websocket.AtraccionesSocketManager
 import com.example.websocket.MultimediaSocketManager
 import com.example.websocket.TextosGuardadosManager
+import com.example.websocket.TurnosSocketManager
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
@@ -27,6 +28,19 @@ fun Application.configureSockets() {
                 }
             } finally {
                 AtraccionesSocketManager.remove(this)
+            }
+        }
+
+        webSocket("/ws/turnos") {
+
+            TurnosSocketManager.add(this)
+
+            try {
+                for (frame in incoming) {
+                    // No necesitamos recibir mensajes por ahora
+                }
+            } finally {
+                TurnosSocketManager.remove(this)
             }
         }
 

@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class EstadoTurno {
-    EN_ESPERA,
+    ESPERA,
     APROBADO,
     LLAMADO,
     FINALIZADO,

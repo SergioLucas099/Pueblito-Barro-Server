@@ -169,7 +169,7 @@ fun Route.multimediaRoutes() {
                 Updates.set("activo", true)
             )
 
-            MultimediaSocketManager.broadcast("UPDATE_TEXT")
+            MultimediaSocketManager.broadcast("UPDATE_VIDEO")
 
             call.respond(mapOf("success" to true))
         }

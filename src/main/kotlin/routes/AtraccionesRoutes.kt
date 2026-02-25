@@ -34,9 +34,7 @@ fun Route.atraccionesRoutes() {
             MongoDB.atracciones.insertOne(atraccion)
 
             // Broadcast en tiempo real
-            AtraccionesSocketManager.broadcast(
-                Json.encodeToString(atraccion)
-            )
+            AtraccionesSocketManager.broadcast("ATRACCIONES_UPDATED")
 
             call.respond(atraccion)
         }
@@ -63,6 +61,8 @@ fun Route.atraccionesRoutes() {
 
             MongoDB.atracciones.updateOneById(id, actualizada)
 
+            AtraccionesSocketManager.broadcast("ATRACCIONES_UPDATED")
+
             call.respond(mapOf("success" to true))
         }
 
@@ -77,12 +77,17 @@ fun Route.atraccionesRoutes() {
                 Atraccion::activa setTo activa
             )
 
+            AtraccionesSocketManager.broadcast("ATRACCIONES_UPDATED")
+
             call.respond(mapOf("activa" to activa))
         }
 
         delete("/{id}") {
             val id = call.parameters["id"]!!
             MongoDB.atracciones.deleteOneById(id)
+
+            AtraccionesSocketManager.broadcast("ATRACCIONES_UPDATED")
+
             call.respond(mapOf("deleted" to true))
         }
     }

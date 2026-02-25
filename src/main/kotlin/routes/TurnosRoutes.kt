@@ -4,6 +4,7 @@ import com.example.db.MongoDB
 import com.example.model.CrearTurnoRequest
 import com.example.model.EstadoTurno
 import com.example.model.Turno
+import com.example.websocket.TurnosSocketManager
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -39,11 +40,13 @@ fun Route.turnosRoutes() {
                 telefono = request.telefono,
                 numeroTurno = siguienteNumero,
                 tiempoEspera = 0,
-                estado = EstadoTurno.EN_ESPERA,
+                estado = EstadoTurno.ESPERA,
                 fecha = request.fecha
             )
 
             MongoDB.turnos.insertOne(nuevoTurno)
+
+            TurnosSocketManager.broadcast("TURNOS_UPDATED")
 
             call.respond(nuevoTurno)
         }
