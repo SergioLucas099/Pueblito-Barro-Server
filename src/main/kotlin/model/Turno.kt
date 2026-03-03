@@ -6,8 +6,9 @@ import kotlinx.serialization.Serializable
 data class Turno(
     val _id: String? = null,
     val atraccionId: String,
-    val nombre: String,
+    val nombreAtraccion: String,
     val numeroTurno: String,
+    val numeroPersonas: Int,
     val telefono: String,
     val tiempoEspera: Int = 0,
     val estado: EstadoTurno = EstadoTurno.ESPERA,

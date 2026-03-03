@@ -3,8 +3,9 @@ package com.example.model
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class CrearTurnoRequest(
-    val atraccionId: String,
+data class CrearTurnosMultiplesRequest(
+    val atraccionesIds: List<String>,
     val telefono: String,
+    val cantidadPersonas: Int,
     val fecha: String
 )
