@@ -11,6 +11,7 @@ data class Turno(
     val numeroPersonas: Int,
     val telefono: String,
     val tiempoEspera: Int = 0,
+    val duracion: Int = 0,
     val estado: EstadoTurno = EstadoTurno.ESPERA,
     val fecha: String
 )

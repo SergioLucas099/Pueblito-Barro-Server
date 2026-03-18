@@ -1,13 +1,23 @@
 package com.example.routes
 
 import com.example.db.MongoDB
+import com.example.db.MongoDB.configuracionCollection
+import com.example.model.ApiResponse
 import com.example.model.Atraccion
 import com.example.model.CrearTurnoRequest
 import com.example.model.CrearTurnosMultiplesRequest
 import com.example.model.EstadoTurno
+import com.example.model.ProgramarReinicioRequest
+import com.example.model.ReinicioConfig
 import com.example.model.Turno
 import com.example.model.TurnoResumenResponse
+import com.example.model.UpdateResponse
+import com.example.service.TurnosService
+import com.example.sheduler.TurnosSheduler
 import com.example.websocket.TurnosSocketManager
+import com.mongodb.client.model.Filters
+import com.mongodb.client.model.UpdateOptions
+import com.mongodb.client.model.Updates
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -15,6 +25,7 @@ import org.litote.kmongo.eq
 import org.litote.kmongo.descending
 import org.litote.kmongo.setTo
 import java.time.LocalDateTime
+import org.bson.types.ObjectId
 
 fun Route.turnosRoutes() {
 
@@ -70,6 +81,7 @@ fun Route.turnosRoutes() {
                     numeroTurno = siguienteNumero,
                     numeroPersonas = request.cantidadPersonas,
                     tiempoEspera = tiempoEsperaActual,
+                    duracion = duracion,
                     estado = EstadoTurno.ESPERA,
                     fecha = request.fecha
                 )
@@ -97,7 +109,6 @@ fun Route.turnosRoutes() {
                     )
                 )
             }
-
             TurnosSocketManager.broadcast("TURNOS_UPDATED")
 
             call.respond(resumenTurnos)
@@ -169,6 +180,46 @@ fun Route.turnosRoutes() {
             call.respond(resumenTurnos)
         }
 
+        post("/reiniciar"){
+
+            TurnosService.reiniciarTurnos()
+
+            call.respond(
+                ApiResponse(
+                    success = true,
+                    mensaje = "Turnos Reiniciados"
+                )
+            )
+        }
+
+        post("/programarReinicio") {
+
+            println("Endpoint /turnos/programarReinicio llamado")
+
+            val request = call.receive<ProgramarReinicioRequest>()
+
+            configuracionCollection.updateOne(
+                Filters.eq("_id", "reinicio_turnos"),
+                Updates.combine(
+                    Updates.set("hora", request.hora),
+                    Updates.set("minuto", request.minuto)
+                ),
+                UpdateOptions().upsert(true)
+            )
+
+            TurnosSheduler.programarReinicioDiario(
+                request.hora,
+                request.minuto
+            )
+
+            call.respond(
+                ApiResponse(
+                    success = true,
+                    mensaje = "Reinicio Programado"
+                )
+            )
+        }
+
         get {
             val lista = MongoDB.turnos.find().toList()
             call.respond(lista)
@@ -183,11 +234,50 @@ fun Route.turnosRoutes() {
             call.respond(lista)
         }
 
+        get("/configuracionReinicio") {
+
+            val config = configuracionCollection
+                .findOne(Filters.eq("_id", "reinicio_turnos"))
+
+            if (config != null) {
+
+                call.respond(config)
+
+            } else {
+
+                call.respond(
+                    ReinicioConfig(
+                        _id = "reinicio_turnos",
+                        hora = 0,
+                        minuto = 0,
+                    )
+                )
+            }
+        }
+
         put("/{id}") {
             val id = call.parameters["id"]!!
             val actualizado = call.receive<Turno>()
-            MongoDB.turnos.updateOneById(id, actualizado)
-            call.respond(mapOf("success" to true))
+
+            val resultado = MongoDB.turnos.updateOne(
+                Filters.eq("_id", id),
+                Updates.combine(
+                    Updates.set("estado", actualizado.estado),
+                    Updates.set("tiempoEspera", actualizado.tiempoEspera),
+                    Updates.set("duracion", actualizado.duracion)
+                )
+            )
+
+            println("MODIFICADOS: ${resultado.modifiedCount}")
+
+            TurnosSocketManager.broadcast("TURNOS_UPDATED")
+
+            call.respond(
+                UpdateResponse(
+                    success = true,
+                    modificados = resultado.modifiedCount.toInt()
+                )
+            )
         }
 
         delete("/{id}") {
